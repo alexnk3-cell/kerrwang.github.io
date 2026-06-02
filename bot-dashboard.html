@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bot 管理 — 營運總覽</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  /* ── Design tokens ── */
+  :root {
+    --primary: #4f46e5;
+    --primary-hover: #4338ca;
+    --primary-soft: #eef2ff;
+    --success: #10b981;
+    --success-soft: #ecfdf5;
+    --success-badge: #047857;
+    --warning: #f59e0b;
+    --warning-soft: #fffbeb;
+    --warning-badge: #b45309;
+    --danger: #ef4444;
+    --danger-soft: #fef2f2;
+    --danger-badge: #b91c1c;
+    --info: #3b82f6;
+    --info-soft: #eff6ff;
+    --info-badge: #1d4ed8;
+    --bg: #f7f8fa;
+    --surface: #ffffff;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --text: #111827;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    --hover: #f3f4f6;
+    --radius-sm: 6px;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,0.10);
+    --sidebar-w: 240px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Inter", "Noto Sans TC", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.5;
+  }
+
+  /* ── App layout ── */
+  .app {
+    display: block;
+    min-height: 100vh;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 16px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand-logo {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .brand-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .sidebar-nav {
+    padding: 12px 12px;
+    flex: 1;
+  }
+
+  .nav-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 12px 12px 6px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: background 0.15s, color 0.15s;
+    text-decoration: none;
+  }
+
+  .nav-item:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
+
+  .nav-item.active {
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+
+  .nav-item .nav-icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+
+  .nav-children {
+    margin-left: 26px;
+    margin-top: 2px;
+    border-left: 1px solid var(--border);
+    padding-left: 8px;
+  }
+
+  .nav-children .nav-item {
+    font-size: 13px;
+    font-weight: 400;
+    padding: 6px 10px;
+  }
+
+  .nav-children .nav-item.active {
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-weight: 500;
+  }
+
+  .sidebar-footer {
+    padding: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── Main content ── */
+  .main {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    gap: 12px;
+  }
+
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .breadcrumb .sep { color: var(--text-muted); }
+  .breadcrumb .current { color: var(--text); font-weight: 500; }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  /* ── Page content ── */
+  .page-wrap {
+    padding: 28px;
+    flex: 1;
+  }
+
+  .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    gap: 16px;
+  }
+
+  .page-header-left {}
+
+  .page-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  .page-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  /* ── Filter bar ── */
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    line-height: 1;
+  }
+
+  .btn:hover { background: var(--hover); }
+
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+  }
+
+  .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+
+  .select-input {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .select-input:focus { border-color: var(--primary); }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+    gap: 0;
+  }
+
+  .tab {
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .tab:hover { color: var(--text); }
+
+  .tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+  }
+
+  /* ── Section heading ── */
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ── KPI Cards grid ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 22px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .kpi-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .kpi-card-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .kpi-card-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  .kpi-card-icon.indigo { background: var(--primary-soft); }
+  .kpi-card-icon.green { background: var(--success-soft); }
+  .kpi-card-icon.blue { background: var(--info-soft); }
+  .kpi-card-icon.amber { background: var(--warning-soft); }
+
+  .kpi-card-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .kpi-card-sub {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+
+  .kpi-card-status-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .status-dot.green { background: var(--success); }
+  .status-dot.red { background: var(--danger); }
+  .status-dot.amber { background: var(--warning); }
+
+  .status-count {
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .trend-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 2px 7px;
+    border-radius: 999px;
+  }
+
+  .trend-up { background: var(--success-soft); color: var(--success-badge); }
+  .trend-down { background: var(--danger-soft); color: var(--danger-badge); }
+  .trend-neutral { background: var(--hover); color: var(--text-secondary); }
+
+  /* ── Engagement row ── */
+  .engagement-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .engagement-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 22px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .engagement-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .engagement-metric-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.15;
+  }
+
+  .engagement-metric-value.danger { color: var(--danger); }
+  .engagement-metric-value.success { color: var(--success); }
+
+  .engagement-metric-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+
+  /* ── Progress bar ── */
+  .progress-bar-wrap { margin-top: 12px; }
+
+  .progress-bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+  }
+
+  .progress-bar-track {
+    height: 6px;
+    background: var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--primary);
+    transition: width 0.4s ease;
+  }
+
+  .progress-bar-fill.green { background: var(--success); }
+  .progress-bar-fill.amber { background: var(--warning); }
+  .progress-bar-fill.red { background: var(--danger); }
+
+  /* ── Table ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title-badge {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--hover);
+    color: var(--text-secondary);
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .data-table thead th {
+    background: #fafbfc;
+    padding: 10px 16px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .data-table tbody td {
+    padding: 13px 16px;
+    font-size: 13px;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  .data-table tbody tr:last-child td { border-bottom: none; }
+
+  .data-table tbody tr:hover td { background: #fafbfc; }
+
+  .rank-cell {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  .rank-cell.top { color: var(--primary); }
+
+  .bot-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .bot-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .bot-avatar.c1 { background: linear-gradient(135deg, #4f46e5, #7c3aed); }
+  .bot-avatar.c2 { background: linear-gradient(135deg, #10b981, #14b8a6); }
+  .bot-avatar.c3 { background: linear-gradient(135deg, #f97316, #ec4899); }
+  .bot-avatar.c4 { background: linear-gradient(135deg, #3b82f6, #06b6d4); }
+  .bot-avatar.c5 { background: linear-gradient(135deg, #ef4444, #f59e0b); }
+
+  .bot-name {
+    font-weight: 500;
+    color: var(--text);
+    font-size: 13px;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .badge-success { background: var(--success-soft); color: var(--success-badge); }
+  .badge-danger { background: var(--danger-soft); color: var(--danger-badge); }
+  .badge-warning { background: var(--warning-soft); color: var(--warning-badge); }
+  .badge-info { background: var(--info-soft); color: var(--info-badge); }
+  .badge-neutral { background: var(--hover); color: var(--text-secondary); }
+
+  .intercept-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .intercept-pct {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    min-width: 34px;
+    text-align: right;
+  }
+
+  .mini-bar-track {
+    flex: 1;
+    height: 5px;
+    background: var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .mini-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--primary);
+  }
+
+  .mini-bar-fill.high { background: var(--success); }
+  .mini-bar-fill.mid { background: var(--info); }
+  .mini-bar-fill.low { background: var(--warning); }
+
+  .table-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .link-btn {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--primary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    text-decoration: none;
+    border: none;
+    background: none;
+    padding: 0;
+  }
+
+  .link-btn:hover { color: var(--primary-hover); }
+
+  /* ── Alert banner ── */
+  .alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+  }
+
+  .alert-warning {
+    background: var(--warning-soft);
+    border-color: #fde68a;
+    color: var(--warning-badge);
+  }
+
+  .alert-icon { font-size: 16px; flex-shrink: 0; }
+  .alert-text { flex: 1; }
+  .alert-action { font-weight: 600; cursor: pointer; text-decoration: underline; }
+
+  /* ── Numeric display ── */
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ── Bottom insight cards ── */
+  .insight-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .insight-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .insight-card-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .insight-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.25;
+  }
+
+  .insight-sub {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  /* ── Divider ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 8px 0 20px;
+  }
+
+  .number-highlight {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* ── DAU Bot 選擇 chip ── */
+  .dau-chip {
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    line-height: 1.5;
+    white-space: nowrap;
+  }
+  .dau-chip:hover { background: var(--hover); color: var(--text); }
+  .dau-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Main ── -->
+  <div class="main">
+
+    <!-- Page content -->
+    <div class="page-wrap">
+
+      <!-- Page header + filters -->
+      <div class="page-header">
+        <div class="page-header-left">
+          <div class="page-title">📊 Bot 營運總覽</div>
+          <div class="page-desc">即時掌握所有機器人的服務狀況、互動數據與資源使用情形</div>
+        </div>
+        <div class="filter-bar">
+          <select class="select-input">
+            <option>📅 本月</option>
+            <option>上月</option>
+            <option>近 7 天</option>
+            <option>近 30 天</option>
+            <option>自訂區間</option>
+          </select>
+          <button class="btn btn-primary">重新整理</button>
+        </div>
+      </div>
+
+      <!-- ⚠️ Alert banner -->
+      <div class="alert alert-warning">
+        <span class="alert-icon">⚠️</span>
+        <span class="alert-text">
+          <strong>1 隻機器人</strong>「行銷活動 Bot」有異常狀況，請盡快檢視 Bot 設定以避免服務中斷。
+        </span>
+        <span class="alert-action">立即處理 →</span>
+      </div>
+
+      <!-- ── 核心指標 ── -->
+      <div class="section-title">🌟 核心營運指標 (Key Metrics)</div>
+
+      <div class="kpi-grid">
+
+        <!-- Bot 狀態 -->
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <span class="kpi-card-label">機器人狀態</span>
+            <div class="kpi-card-icon indigo">🤖</div>
+          </div>
+          <div class="kpi-card-status-list">
+            <div class="status-row">
+              <div class="status-dot green"></div>
+              <span class="status-count num">12</span>
+              <span style="font-size:13px; color:var(--text-secondary);">隻 正常運行</span>
+            </div>
+            <div class="status-row">
+              <div class="status-dot red"></div>
+              <span class="status-count num">1</span>
+              <span style="font-size:13px; color:var(--text-secondary);">隻 錯誤</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 主動推播 -->
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <span class="kpi-card-label">主動推播用量</span>
+            <div class="kpi-card-icon blue">✉️</div>
+          </div>
+          <div class="kpi-card-value num">8,500</div>
+          <div class="kpi-card-sub" style="display:flex; align-items:center; gap:6px; margin-top:6px;">
+            <span>則 已發送</span>
+            <span class="trend-badge trend-up">▲ +12%</span>
+          </div>
+          <div style="margin-top:8px; font-size:12px; color:var(--text-secondary);">
+            上月：<span class="num">7,580</span> 則
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── DAU 趨勢圖 ── -->
+      <div class="section-title" style="margin-top:8px;">📅 每日活躍用戶 (DAU)</div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header" style="flex-direction:column; align-items:stretch; gap:12px; padding-bottom:14px;">
+          <!-- 標題列 + 摘要數字 -->
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <div class="card-title">
+              每日活躍用戶趨勢
+              <span class="card-title-badge">5 月</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:16px;">
+              <div style="text-align:right;">
+                <div style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em;">本月平均 DAU</div>
+                <div style="font-size:20px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums;">
+                  <span id="dauAvg">415</span><span style="font-size:13px; font-weight:500; color:var(--text-secondary);"> 人 / 天</span>
+                </div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em;">單日峰值</div>
+                <div style="font-size:20px; font-weight:700; color:var(--primary); font-variant-numeric:tabular-nums;">
+                  <span id="dauPeak">545</span><span style="font-size:13px; font-weight:500; color:var(--text-secondary);"> 人</span>
+                </div>
+              </div>
+              <span class="trend-badge trend-up" id="dauTrend" style="font-size:12px; padding:4px 10px;">▲ +18% vs 上月</span>
+            </div>
+          </div>
+          <!-- Bot 選擇 chips -->
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span style="font-size:12px; color:var(--text-muted); flex-shrink:0;">篩選：</span>
+            <button class="dau-chip active" data-bot="all">全部機器人</button>
+            <button class="dau-chip" data-bot="cs">官方客服小幫手</button>
+            <button class="dau-chip" data-bot="checkin">打卡</button>
+            <button class="dau-chip" data-bot="catalog">產品報價與型錄</button>
+            <button class="dau-chip" data-bot="dealer">經銷商訂貨</button>
+            <button class="dau-chip" data-bot="marketing">行銷活動</button>
+          </div>
+        </div>
+        <div style="padding:20px 24px 16px;">
+          <canvas id="dauChart" height="90"></canvas>
+        </div>
+        <div style="padding:0 24px 14px; display:flex; align-items:center; gap:20px;">
+          <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-secondary);">
+            <div id="dauLegendDot" style="width:12px; height:3px; border-radius:2px; background:#4f46e5;"></div> 本月 DAU
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-secondary);">
+            <div style="width:12px; height:3px; border-radius:2px; background:#d1d5db;"></div> 上月同期
+          </div>
+          <div style="margin-left:auto; font-size:12px; color:var(--text-muted);">週末為灰色底色</div>
+        </div>
+      </div>
+
+      <!-- ── 排行榜 ── -->
+      <div class="divider"></div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            🏆 機器人活躍排行榜
+            <span class="card-title-badge">Top 5</span>
+          </div>
+          <div style="font-size:12px; color:var(--text-muted);">依本月服務人數排序</div>
+        </div>
+
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width:60px; text-align:center;">排名</th>
+              <th>機器人名稱</th>
+              <th style="text-align:right;">服務人數</th>
+              <th style="text-align:right;">觸發次數</th>
+              <th>狀態</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <tr>
+              <td class="rank-cell top">🥇 1</td>
+              <td>
+                <div class="bot-name-cell">
+                  <div class="bot-avatar c1">🎧</div>
+                  <span class="bot-name">官方客服小幫手 Bot</span>
+                </div>
+              </td>
+              <td style="text-align:right;" class="num">5,200</td>
+              <td style="text-align:right;" class="num">31,000</td>
+              <td><span class="badge badge-success">🟢 正常</span></td>
+              <td><a class="link-btn" href="#">查看 →</a></td>
+            </tr>
+
+            <tr>
+              <td class="rank-cell top">🥈 2</td>
+              <td>
+                <div class="bot-name-cell">
+                  <div class="bot-avatar c2">⏰</div>
+                  <span class="bot-name">打卡 Bot</span>
+                </div>
+              </td>
+              <td style="text-align:right;" class="num">2,800</td>
+              <td style="text-align:right;" class="num">18,500</td>
+              <td><span class="badge badge-success">🟢 正常</span></td>
+              <td><a class="link-btn" href="#">查看 →</a></td>
+            </tr>
+
+            <tr>
+              <td class="rank-cell top">🥉 3</td>
+              <td>
+                <div class="bot-name-cell">
+                  <div class="bot-avatar c3">📦</div>
+                  <span class="bot-name">產品報價與型錄 Bot</span>
+                </div>
+              </td>
+              <td style="text-align:right;" class="num">1,500</td>
+              <td style="text-align:right;" class="num">12,000</td>
+              <td><span class="badge badge-success">🟢 正常</span></td>
+              <td><a class="link-btn" href="#">查看 →</a></td>
+            </tr>
+
+            <tr>
+              <td class="rank-cell">4</td>
+              <td>
+                <div class="bot-name-cell">
+                  <div class="bot-avatar c4">🛒</div>
+                  <span class="bot-name">經銷商訂貨 Bot</span>
+                </div>
+              </td>
+              <td style="text-align:right;" class="num">850</td>
+              <td style="text-align:right;" class="num">5,200</td>
+              <td><span class="badge badge-success">🟢 正常</span></td>
+              <td><a class="link-btn" href="#">查看 →</a></td>
+            </tr>
+
+            <tr>
+              <td class="rank-cell">5</td>
+              <td>
+                <div class="bot-name-cell">
+                  <div class="bot-avatar c5">📣</div>
+                  <span class="bot-name">行銷活動 Bot</span>
+                </div>
+              </td>
+              <td style="text-align:right;" class="num">600</td>
+              <td style="text-align:right;" class="num">3,000</td>
+              <td><span class="badge badge-danger">🔴 異常狀況</span></td>
+              <td><a class="link-btn" href="#">查看 →</a></td>
+            </tr>
+
+          </tbody>
+        </table>
+
+        <div class="table-footer">
+          <a class="link-btn" href="#">查看完整機器人列表 →</a>
+        </div>
+      </div>
+
+    </div><!-- /page-wrap -->
+  </div><!-- /main -->
+</div><!-- /app -->
+<script>
+(function () {
+  const labels   = Array.from({length: 31}, (_, i) => `5/${i+1}`);
+  const weekends = new Set([3,4,10,11,17,18,24,25,31]);
+
+  // ── 各 Bot 的 DAU 資料 ──
+  const BOTS = {
+    all: {
+      name: '全部機器人',
+      color: '#4f46e5', bg: 'rgba(79,70,229,0.08)',
+      trend: { cls:'trend-up',   text:'▲ +18% vs 上月' },
+      thisMon: [428,445,290,215,462,488,505,478,452,298,228,468,512,530,498,465,318,248,478,522,545,510,482,330,258,494,538,520,495,342,268],
+      lastMon: [362,378,248,188,390,415,428,402,380,252,192,395,432,448,420,394,268,210,402,440,458,432,408,280,218,416,452,438,418,290,228]
+    },
+    cs: {
+      name: '官方客服小幫手 Bot',
+      color: '#4f46e5', bg: 'rgba(79,70,229,0.08)',
+      trend: { cls:'trend-up',   text:'▲ +12% vs 上月' },
+      thisMon: [172,180,72,66,185,192,205,198,188,75,68,195,212,220,210,200,80,72,198,218,228,215,205,85,76,210,225,218,210,198,88],
+      lastMon: [152,160,64,58,165,172,183,176,168,66,60,174,190,196,188,178,72,64,176,194,204,192,183,76,68,188,201,195,188,176,78]
+    },
+    checkin: {
+      name: '打卡 Bot',
+      color: '#10b981', bg: 'rgba(16,185,129,0.08)',
+      trend: { cls:'trend-up',   text:'▲ +8% vs 上月' },
+      // 打卡 bot：平日高，週末近乎 0
+      thisMon: [148,152,8,6,155,158,162,155,150,9,7,158,162,165,160,155,10,8,158,165,168,162,158,11,8,162,168,165,160,155,10],
+      lastMon: [136,140,7,5,143,146,150,143,138,8,6,146,150,152,147,143,9,7,146,152,155,149,146,10,7,149,155,152,147,143,9]
+    },
+    catalog: {
+      name: '產品報價與型錄 Bot',
+      color: '#f97316', bg: 'rgba(249,115,22,0.08)',
+      trend: { cls:'trend-up',   text:'▲ +22% vs 上月' },
+      thisMon: [52,58,18,14,55,62,65,60,55,16,13,58,65,68,63,58,17,14,60,65,70,65,62,18,15,62,68,65,62,58,19],
+      lastMon: [42,48,14,11,45,51,53,49,45,13,11,48,53,56,52,48,14,11,49,53,57,53,51,15,12,51,56,53,51,48,16]
+    },
+    dealer: {
+      name: '經銷商訂貨 Bot',
+      color: '#3b82f6', bg: 'rgba(59,130,246,0.08)',
+      trend: { cls:'trend-up',   text:'▲ +15% vs 上月' },
+      thisMon: [30,33,6,4,32,35,38,36,33,5,4,34,37,40,38,35,6,5,35,38,42,40,37,7,5,37,40,42,40,38,6],
+      lastMon: [26,29,5,4,28,30,33,31,29,4,3,30,32,35,33,30,5,4,30,33,37,35,32,6,4,32,35,37,35,33,5]
+    },
+    marketing: {
+      name: '行銷活動 Bot',
+      color: '#ef4444', bg: 'rgba(239,68,68,0.07)',
+      trend: { cls:'trend-down', text:'▼ -5% vs 上月' },
+      // 行銷活動：月初高，逐漸遞減（活動效期將近）
+      thisMon: [32,30,18,16,28,26,25,24,22,15,14,22,22,20,20,19,14,12,18,18,17,16,15,12,10,15,14,13,12,11,9],
+      lastMon: [28,30,16,14,29,28,27,26,25,14,13,25,26,24,23,22,14,12,22,23,22,21,20,13,11,20,20,19,18,16,10]
+    }
+  };
+
+  function calcStats(data) {
+    const avg  = Math.round(data.reduce((a,b) => a+b, 0) / data.length);
+    const peak = Math.max(...data);
+    return { avg, peak };
+  }
+
+  const weekendPlugin = {
+    id: 'weekendShading',
+    beforeDraw(chart) {
+      const { ctx, chartArea: {left, right, top, bottom}, scales: {x} } = chart;
+      if (!x) return;
+      ctx.save();
+      labels.forEach((_, i) => {
+        if (!weekends.has(i+1)) return;
+        const x0 = i === 0 ? left : (x.getPixelForValue(i-1) + x.getPixelForValue(i)) / 2;
+        const x1 = i === labels.length-1 ? right : (x.getPixelForValue(i) + x.getPixelForValue(i+1)) / 2;
+        ctx.fillStyle = 'rgba(243,244,246,0.72)';
+        ctx.fillRect(x0, top, x1 - x0, bottom - top);
+      });
+      ctx.restore();
+    }
+  };
+
+  const chartCtx = document.getElementById('dauChart').getContext('2d');
+
+  const chart = new Chart(chartCtx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '本月 DAU',
+          data: BOTS.all.thisMon,
+          borderColor: BOTS.all.color,
+          backgroundColor: BOTS.all.bg,
+          borderWidth: 2,
+          pointRadius: 0, pointHoverRadius: 5,
+          pointHoverBackgroundColor: BOTS.all.color,
+          pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2,
+          fill: true, tension: 0.4
+        },
+        {
+          label: '上月同期',
+          data: BOTS.all.lastMon,
+          borderColor: '#d1d5db',
+          backgroundColor: 'transparent',
+          borderWidth: 1.5, borderDash: [4,3],
+          pointRadius: 0, pointHoverRadius: 4,
+          pointHoverBackgroundColor: '#9ca3af',
+          fill: false, tension: 0.4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1f2937', titleColor: '#f9fafb',
+          bodyColor: '#d1d5db', padding: 10, cornerRadius: 8,
+          callbacks: {
+            label: c => ` ${c.dataset.label}：${c.parsed.y.toLocaleString()} 人`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(0,0,0,0.04)' },
+          ticks: { font:{size:11}, color:'#9ca3af', maxTicksLimit:16, maxRotation:0 },
+          border: { display: false }
+        },
+        y: {
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          ticks: { font:{size:11}, color:'#9ca3af', callback: v => v.toLocaleString() },
+          border: { display: false }, min: 0
+        }
+      }
+    },
+    plugins: [weekendPlugin]
+  });
+
+  // ── 切換 Bot ──
+  function switchBot(key) {
+    const bot = BOTS[key];
+    // 更新 chart 資料與顏色
+    chart.data.datasets[0].data             = bot.thisMon;
+    chart.data.datasets[0].borderColor      = bot.color;
+    chart.data.datasets[0].backgroundColor  = bot.bg;
+    chart.data.datasets[0].pointHoverBackgroundColor = bot.color;
+    chart.data.datasets[1].data             = bot.lastMon;
+    chart.update();
+    // 更新摘要數字
+    const { avg, peak } = calcStats(bot.thisMon);
+    document.getElementById('dauAvg').textContent  = avg.toLocaleString();
+    document.getElementById('dauPeak').textContent = peak.toLocaleString();
+    // 更新 trend badge
+    const trendEl = document.getElementById('dauTrend');
+    trendEl.className = `trend-badge ${bot.trend.cls}`;
+    trendEl.textContent = bot.trend.text;
+    // 更新圖例色塊
+    document.getElementById('dauLegendDot').style.background = bot.color;
+  }
+
+  // ── Chip 點擊事件 ──
+  document.querySelectorAll('.dau-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.dau-chip').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      switchBot(btn.dataset.bot);
+    });
+  });
+})();
+</script>
+</body>
+</html>
